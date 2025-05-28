@@ -3,10 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ProductSearch from './ProductSearch';
-import CustomerSearch from './CustomerSearch';
 import { IndianRupee, Coins, UserPlus, Trash2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,84 +14,77 @@ const INR_TO_NPR_RATE = 1.6;
 
 const BillingForm = ({ onBillUpdate }) => {
   const [customerId, setCustomerId] = useState(null);
-  const [customerMobile, setCustomerMobile] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
+  const [customerMobile, setCustomerMobile] = useState('+91');
+
   const [selectedProducts, setSelectedProducts] = useState([]);
-  const [currency, setCurrency] = useState('INR'); // INR by default
+  const [currency, setCurrency] = useState('INR');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
-  const [discountType] = useState('fixed'); // Only fixed supported
-  const [discountValue, setDiscountValue] = useState(''); // Empty by default
+  const [discountValue, setDiscountValue] = useState('');
+
   const [subtotal, setSubtotal] = useState(0);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
   const { toast } = useToast();
 
-  // Initialize localStorage for customers and products
+  // Load customer data when mobile number changes
   useEffect(() => {
-    if (!localStorage.getItem('customers')) {
-      localStorage.setItem('customers', JSON.stringify([]));
-    }
-    if (!localStorage.getItem('products')) {
-      localStorage.setItem('products', JSON.stringify([]));
-    }
-  }, []);
-
-  // Auto-fetch customer details when mobile number changes
-  useEffect(() => {
-    const customers = JSON.parse(localStorage.getItem('customers') || '[]');
-    const existingCustomer = customers.find(c => c.mobile === customerMobile);
-    if (existingCustomer) {
-      setCustomerId(existingCustomer.id);
-      setCustomerName(existingCustomer.name);
-      setCustomerAddress(existingCustomer.address);
-    } else {
-      setCustomerId(null);
-      setCustomerName('');
-      setCustomerAddress('');
+    if (customerMobile.length >= 13) { // +91 followed by 10 digits
+      const customers = JSON.parse(localStorage.getItem('customers') || '[]');
+      const existingCustomer = customers.find(c => c.mobile === customerMobile);
+      
+      if (existingCustomer) {
+        setCustomerId(existingCustomer.id);
+        setCustomerName(existingCustomer.name);
+        setCustomerAddress(existingCustomer.address);
+      } else {
+        // Reset fields if new mobile number entered
+        setCustomerId(null);
+        setCustomerName('');
+        setCustomerAddress('');
+      }
     }
   }, [customerMobile]);
 
   const clearCustomerDetails = () => {
     setCustomerId(null);
-    setCustomerMobile('');
     setCustomerName('');
     setCustomerAddress('');
-  };
-
-  const handleCustomerSelect = (customer) => {
-    setCustomerId(customer.id);
-    setCustomerMobile(customer.mobile);
-    setCustomerName(customer.name);
-    setCustomerAddress(customer.address);
+    setCustomerMobile('+91');
   };
 
   const isValidIndianMobile = (mobile) => {
-    // Accepts formats like: +919876543210
+    // Requires full international format with +91
     const regex = /^\+91[6-9]\d{9}$/;
     return regex.test(mobile);
   };
 
   const saveCustomerDetails = () => {
-    if (!customerMobile.trim()) {
-      toast({ variant: "destructive", title: "Missing Details", description: "Mobile number with country code is required." });
-      return;
-    }
     if (!isValidIndianMobile(customerMobile.trim())) {
-      toast({ variant: "destructive", title: "Invalid Mobile Number", description: "Enter a valid Indian mobile number with +91 (e.g., +919876543210)." });
+      toast({ 
+        variant: "destructive", 
+        title: "Invalid Mobile Number", 
+        description: "Enter full Indian mobile number with +91 prefix (e.g., +919876543210)" 
+      });
       return;
     }
+    
     if (!customerName.trim()) {
-      toast({ variant: "destructive", title: "Missing Details", description: "Customer Name is required to save." });
+      toast({ 
+        variant: "destructive", 
+        title: "Missing Details", 
+        description: "Customer Name is required to save." 
+      });
       return;
     }
 
     let customers = JSON.parse(localStorage.getItem('customers') || '[]');
     const newCustomer = {
       id: customerId || uuidv4(),
-      mobile: customerMobile.trim(),
       name: customerName.trim(),
       address: customerAddress.trim(),
+      mobile: customerMobile.trim()
     };
 
     if (customerId) {
@@ -101,23 +92,35 @@ const BillingForm = ({ onBillUpdate }) => {
     } else {
       const existingCustomer = customers.find(c => c.mobile === newCustomer.mobile);
       if (existingCustomer) {
-        toast({ variant: "destructive", title: "Customer Exists", description: "A customer with this mobile number already exists." });
+        // This shouldn't happen since we're checking on mobile change
         return;
       }
       customers.push(newCustomer);
       setCustomerId(newCustomer.id);
     }
+    
     localStorage.setItem('customers', JSON.stringify(customers));
-    toast({ title: "Customer Saved!", description: `${newCustomer.name}'s details have been saved.` });
+    toast({ 
+      title: "Customer Saved!", 
+      description: `${newCustomer.name}'s details have been saved.` 
+    });
   };
 
   const handleAddProduct = (product) => {
     const existingProduct = selectedProducts.find(p => p.id === product.id);
     if (existingProduct) {
-      toast({ variant: "destructive", title: "Product already added", description: "Please update quantity for existing product." });
+      toast({ 
+        variant: "destructive", 
+        title: "Product already added", 
+        description: "Please update quantity for existing product." 
+      });
       return;
     }
-    setSelectedProducts(prev => [...prev, { ...product, quantity: 1, billItemId: uuidv4() }]);
+    setSelectedProducts(prev => [...prev, { 
+      ...product, 
+      quantity: 1, 
+      billItemId: uuidv4() 
+    }]);
   };
 
   const handleQuantityChange = (billItemId, quantity) => {
@@ -140,10 +143,7 @@ const BillingForm = ({ onBillUpdate }) => {
     });
     setSubtotal(currentSubtotal);
 
-    let currentDiscountAmount = 0;
-    if (discountValue !== '') {
-      currentDiscountAmount = parseFloat(discountValue) || 0;
-    }
+    let currentDiscountAmount = parseFloat(discountValue) || 0;
     currentDiscountAmount = Math.max(0, Math.min(currentDiscountAmount, currentSubtotal));
     setDiscountAmount(currentDiscountAmount);
 
@@ -157,9 +157,9 @@ const BillingForm = ({ onBillUpdate }) => {
   useEffect(() => {
     onBillUpdate({
       customerId,
-      customerMobile,
       customerName,
       customerAddress,
+      customerMobile,
       items: selectedProducts.map(p => ({
         ...p,
         price: currency === 'NPR' ? p.priceINR * INR_TO_NPR_RATE : p.priceINR,
@@ -167,15 +167,12 @@ const BillingForm = ({ onBillUpdate }) => {
       currency,
       paymentMethod,
       subtotal,
-      discountType,
-      discountValue: discountValue === '' ? 0 : parseFloat(discountValue),
       discountAmount,
       totalAmount,
     });
-  }, [customerId, customerMobile, customerName, customerAddress, selectedProducts, currency, paymentMethod, subtotal, discountType, discountValue, discountAmount, totalAmount, onBillUpdate]);
+  }, [customerId, customerName, customerAddress, customerMobile, selectedProducts, currency, paymentMethod, subtotal, discountAmount, totalAmount, onBillUpdate]);
 
   const currencySymbol = currency === 'INR' ? '₹' : 'रु';
-  const currencyName = currency === 'INR' ? 'INR' : 'NPR';
 
   return (
     <Card className="shadow-xl bg-gradient-to-br from-white to-slate-50">
@@ -192,7 +189,6 @@ const BillingForm = ({ onBillUpdate }) => {
       <CardContent className="space-y-6">
         <section className="space-y-4">
           <Label>Customer Details</Label>
-          <CustomerSearch onCustomerSelect={handleCustomerSelect} onAddNewCustomer={clearCustomerDetails} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
               <Label htmlFor="customerMobile">Mobile Number <span className="text-red-500">*</span></Label>
@@ -202,10 +198,9 @@ const BillingForm = ({ onBillUpdate }) => {
                 value={customerMobile}
                 onChange={e => setCustomerMobile(e.target.value)}
                 placeholder="e.g., +919876543210"
-                maxLength={12}
-                pattern="^\+91[6-9]\d{9}$"
+                maxLength={13}
               />
-              <p className="text-xs text-gray-500 mt-1">Indian mobile number with +91 prefix</p>
+              <p className="text-xs text-gray-500 mt-1">with country code (+91 or +977)</p>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
@@ -225,7 +220,7 @@ const BillingForm = ({ onBillUpdate }) => {
                 id="customerAddress"
                 value={customerAddress}
                 onChange={e => setCustomerAddress(e.target.value)}
-                placeholder="e.g., Kathmandu, Nepal"
+                placeholder="e.g., Hardi Dali"
               />
             </motion.div>
           </div>
@@ -253,7 +248,7 @@ const BillingForm = ({ onBillUpdate }) => {
                   <p className="font-semibold">{product.name} ({product.unit})</p>
                   <p className="text-sm text-gray-500">
                     Price: {currencySymbol}
-                    {(currency === 'NPR' ? product.priceINR * INR_TO_NPR_RATE : product.priceINR).toFixed(2)} / {product.unit}
+                    {(currency === 'NPR' ? product.priceINR * INR_TO_NPR_RATE : product.priceINR).toFixed(2)}
                   </p>
                 </div>
                 <Input
@@ -277,7 +272,7 @@ const BillingForm = ({ onBillUpdate }) => {
           transition={{ delay: 0.6 }}
           className="pt-4 border-t"
         >
-          <Label>Discount (Fixed Amount)</Label>
+          <Label>Discount Amount (Optional)</Label>
           <Input
             type="number"
             placeholder="Enter discount amount"
@@ -285,45 +280,55 @@ const BillingForm = ({ onBillUpdate }) => {
             onChange={(e) => setDiscountValue(e.target.value)}
             className="mt-1"
             min="0"
-            step="0.01"
+            step="1"
           />
-          {discountValue !== '' && parseFloat(discountValue) > 0 && (
+          {discountValue > 0 && (
             <p className="text-sm text-green-600 mt-1">
-              Discount Applied: {currencySymbol}{parseFloat(discountValue).toFixed(2)} {currencyName}
+              Discount Applied: {currencySymbol}{discountAmount.toFixed(2)}
             </p>
           )}
         </motion.section>
 
         <section className="pt-6 border-t space-y-2">
           <p>Subtotal: <strong>{currencySymbol}{subtotal.toFixed(2)}</strong></p>
-          <p>Discount: <strong>{currencySymbol}{discountAmount.toFixed(2)}</strong></p>
+          {discountAmount > 0 && (
+            <p>Discount: <strong>-{currencySymbol}{discountAmount.toFixed(2)}</strong></p>
+          )}
           <p>Total: <strong>{currencySymbol}{totalAmount.toFixed(2)}</strong></p>
         </section>
 
         <section className="pt-4 border-t grid grid-cols-2 gap-4">
           <div>
             <Label>Currency</Label>
-            <div className="flex items-center space-x-2 mt-1">
-              <span>INR</span>
-              <Switch
-                checked={currency === 'NPR'}
-                onCheckedChange={(checked) => setCurrency(checked ? 'NPR' : 'INR')}
-              />
-              <span>NPR</span>
-            </div>
+            <Select value={currency} onValueChange={setCurrency}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select currency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="INR">INR (₹)</SelectItem>
+                <SelectItem value="NPR">NPR (रु)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
             <Label>Payment Method</Label>
-            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select payment method" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Cash">Cash</SelectItem>
-                <SelectItem value="UPI">UPI</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex space-x-2">
+              <Button
+                variant={paymentMethod === 'Cash' ? 'default' : 'outline'}
+                onClick={() => setPaymentMethod('Cash')}
+                className="flex-1"
+              >
+                Cash
+              </Button>
+              <Button
+                variant={paymentMethod === 'UPI' ? 'default' : 'outline'}
+                onClick={() => setPaymentMethod('UPI')}
+                className="flex-1"
+              >
+                UPI
+              </Button>
+            </div>
           </div>
         </section>
       </CardContent>
