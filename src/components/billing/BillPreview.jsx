@@ -32,7 +32,7 @@ const BillPreview = ({ billData }) => {
     pesticideLic: "PESTICIDE LIC. No. 13/MG/2014",
     name: "मिश्रा कृषि बीज भण्डार",
     address: "हरदी डाली, नौतनवां, जिला- महराजगंज (उ.प्र.)",
-    mobiles: ["+919554154276", "+919118l23644"],
+    mobiles: ["+919554154276", "+919118123644"],
   };
 
   const handlePrint = () => {
